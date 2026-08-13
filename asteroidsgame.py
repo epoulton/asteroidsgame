@@ -1,8 +1,12 @@
 import configparser
+from pathlib import Path
+
 import pygame
 import pygame_menu
 
 import _game
+
+PROJECT_DIR = Path(__file__).resolve().parent
 
 # Flags to track the current state of the game and enable switching
 # between menu interfaces and gameplay.
@@ -49,7 +53,7 @@ class AsteroidsGame:
             self._background_color = AsteroidsGame.default_background_color
             self._foreground_color = AsteroidsGame.default_foreground_color
 
-        icon = pygame.image.load('icon.png')
+        icon = pygame.image.load(str(PROJECT_DIR / "icon.png"))
         pygame.display.set_icon(icon)
 
         self._surface = pygame.display.set_mode(self._window_size)
@@ -171,7 +175,11 @@ class AsteroidsGame:
         Begin interactive gameplay.
         """
 
+        maximum_dt = 0.25  # seconds
+
         while self._state != EXIT:
+            dt = min(self._clock.tick(self._frame_rate) / 1000, maximum_dt)
+
             # Erase the surface.
             self._surface.fill(self._background_color)
 
@@ -198,10 +206,22 @@ class AsteroidsGame:
                     self._next_state = EXIT
 
                 # The 'P' key pauses the game.
-                elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
+                elif (
+                        self._state == PLAYING
+                        and event.type == pygame.KEYDOWN
+                        and event.key == pygame.K_p
+                ):
                     self._next_state = PAUSED
+                    self._game.reset_controls()
 
-                elif event.type in self._game.event_types_handled:
+                elif event.type == pygame.WINDOWFOCUSLOST:
+                    self._game.reset_controls()
+
+                elif (
+                        self._state == PLAYING
+                        and self._next_state == PLAYING
+                        and event.type in self._game.event_types_handled
+                ):
                     # None of the events handled by the game need to
                     # return a value to the game manager. It's possible
                     # this won't always be the case, and the following
@@ -216,13 +236,10 @@ class AsteroidsGame:
                 # The Game.tick() method returns a flag to indicate the
                 # outcome of the game during the update. Flags are
                 # defined in the _game module.
-                outcome = self._game.tick(1 / self._frame_rate)
+                outcome = self._game.tick(dt)
 
                 if outcome == _game.OVER:
                     self._next_state = END
-
-            # Continue to the next frame and update self._state.
-            self._clock.tick(self._frame_rate)
 
             if self._next_state != self._state:
                 self._state = self._next_state
@@ -230,7 +247,7 @@ class AsteroidsGame:
 
 if __name__ == '__main__':
     game_config = configparser.ConfigParser()
-    game_config.read('config.ini')
+    game_config.read(str(PROJECT_DIR / 'config.ini'))
 
     pygame.init()
     AsteroidsGame(game_config).play()

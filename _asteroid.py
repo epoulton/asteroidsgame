@@ -96,8 +96,8 @@ class Asteroid:
         beta = (s_med - s_min) / numpy.log(2)
         speed = rng.exponential(beta) + s_min
 
-        direction = rng.uniform(0, 1, 2)
-        direction /= numpy.linalg.norm(direction)
+        direction = rng.uniform(0, 2*numpy.pi)
+        direction = numpy.array([numpy.cos(direction), numpy.sin(direction)])
 
         return speed * direction
 

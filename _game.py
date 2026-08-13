@@ -136,9 +136,13 @@ class Game:
             bullet.tick(dt)
             self._handle_boundary_crossings(bullet)
 
+        self._bullets = [bullet for bullet in self._bullets if bullet.is_alive()]
+
         for asteroid in self._asteroids:
             asteroid.tick(dt)
             self._handle_boundary_crossings(asteroid)
+
+        self._asteroids = [asteroid for asteroid in self._asteroids if asteroid.is_alive()]
 
         # Increment the level and spawn new asteroids if they have all
         # been destroyed.
@@ -154,7 +158,7 @@ class Game:
         # appropriate, or end the game.
         self._respawn_timer.count -= dt
 
-        if not self._ship.is_alive() and self._respawn_timer.count <= 1:
+        if not self._ship.is_alive() and self._respawn_timer.count <= 0:
             if self._lives.count <= 0:
                 return OVER
             else:
@@ -235,7 +239,13 @@ class Game:
                 separation = numpy.linalg.norm(
                     bullet.position - asteroid.position)
 
-                if separation <= asteroid.diameter / 2:
+                # Handle the case where a bullet collides with two asteroids in the same frame. Only one collision/explosion should occur.
+                # Ditto for two bullets and one asteroid.
+                if (
+                        bullet.is_alive()
+                        and asteroid.is_alive()
+                        and separation <= asteroid.diameter / 2
+                    ):
                     self._asteroids += asteroid.explode(self._fragments_count)
                     bullet.explode()
                     self._score.count += 1
@@ -252,7 +262,11 @@ class Game:
             separation = numpy.linalg.norm(
                 self._ship.position - asteroid.position)
 
-            if separation <= asteroid.diameter / 2:
+            # Handle the case where a ship collides with two asteroids in the same frame. Only one collision/explosion should occur.
+            if (
+                    self._ship.is_alive()
+                    and separation <= asteroid.diameter / 2
+            ):
                 self._ship.explode()
                 self._asteroids += asteroid.explode(self._fragments_count)
                 self._respawn_timer.count = self._respawn_period
@@ -281,7 +295,7 @@ class Game:
         new_asteroids = []
 
         for _ in range(self._asteroids_count):
-            diameter = _asteroid.Asteroid.generate_diameter()
+            diameter = _asteroid.Asteroid.generate_diameter(self._config)
 
             while True:
                 position = _asteroid.Asteroid.generate_position(
@@ -297,12 +311,17 @@ class Game:
             # is multiplied by 0.1 for each level completed.
             speed_multiplier = (self._level.count + 9) / 10
 
-            velocity = _asteroid.Asteroid.generate_velocity()
+            velocity = _asteroid.Asteroid.generate_velocity(self._config)
 
             new_asteroids.append(_asteroid.Asteroid(
                 diameter,
                 position,
                 speed_multiplier * velocity,
-                self._foreground_color))
+                self._foreground_color,
+                self._config))
 
         return new_asteroids
+
+    def reset_controls(self):
+        """Release all player controls."""
+        self._ship.reset_controls()

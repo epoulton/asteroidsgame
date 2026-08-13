@@ -292,3 +292,8 @@ class Ship:
         Execute necessary behaviour upon the ship exploding.
         """
         self._alive = False
+
+    def reset_controls(self):
+        """Release all continuously applied controls."""
+        self._thrusting = 0
+        self._steering = 0
